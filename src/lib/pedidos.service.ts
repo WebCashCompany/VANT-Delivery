@@ -1,9 +1,8 @@
-// src/lib/pedidos.service.ts  (frontend VANT-PEDIDOS)
-// Substitui o pedidos.model.ts — não conecta mais direto no MongoDB
+// src/lib/pedidos.service.ts
+// Em produção (Vercel): VITE_API_URL fica vazio → chama /api/pedidos relativo
+// Em dev local: VITE_API_URL=http://localhost:4000
 
-const API_URL = import.meta.env.VITE_API_URL as string;
-
-if (!API_URL) throw new Error('VITE_API_URL não definida no .env');
+const API_URL = (import.meta.env.VITE_API_URL as string) || '';
 
 export interface PedidoInput {
   nome: string;
