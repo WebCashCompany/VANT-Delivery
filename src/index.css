@@ -1,3 +1,145 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ─────────────────────────────────────────────
+   DESIGN SYSTEM GLOBAL
+───────────────────────────────────────────── */
+
+:root {
+
+  /* cores base */
+  --bg: #06070a;
+  --cyan: #18d2e0;
+  --cyan-soft: #0aa6b5;
+  --orange: #ff7a2f;
+
+  /* tipografia */
+  --text-main: #f2f6fa;
+  --text-secondary: #b7c4d1;
+  --text-muted: #7e8b98;
+
+  /* bordas */
+  --border-soft: rgba(24,210,224,0.15);
+  --border-glow: rgba(24,210,224,0.25);
+
+  /* fundos */
+  --card-bg: rgba(10,10,16,0.92);
+  --input-bg: rgba(255,255,255,0.03);
+}
+
+/* ─────────────────────────────────────────────
+   RESET E BASE
+───────────────────────────────────────────── */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text-main);
+  font-family: 'DM Sans', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─────────────────────────────────────────────
+   SCROLLBAR MODERNA
+───────────────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #06070a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(
+    180deg,
+    var(--cyan),
+    var(--orange)
+  );
+  border-radius: 999px;
+}
+
+/* firefox */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--cyan) #06070a;
+}
+
+/* ─────────────────────────────────────────────
+   UTILIDADES CUSTOM
+───────────────────────────────────────────── */
+
+.glow-cyan {
+  box-shadow:
+    0 0 20px rgba(24,210,224,0.25),
+    0 0 40px rgba(24,210,224,0.10);
+}
+
+.glow-orange {
+  box-shadow:
+    0 0 20px rgba(255,122,47,0.25),
+    0 0 40px rgba(255,122,47,0.10);
+}
+
+.card-glass {
+  background: var(--card-bg);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--border-soft);
+}
+
+/* ─────────────────────────────────────────────
+   INPUT PREMIUM
+───────────────────────────────────────────── */
+
+.input-premium {
+  background: var(--input-bg);
+  border: 1px solid var(--border-soft);
+  transition: all .2s ease;
+}
+
+.input-premium:focus {
+  border-color: var(--border-glow);
+  box-shadow:
+    0 0 0 3px rgba(24,210,224,0.08),
+    0 0 16px rgba(24,210,224,0.08);
+  background: rgba(255,255,255,0.04);
+}
+
+/* ─────────────────────────────────────────────
+   BOTÃO PREMIUM
+───────────────────────────────────────────── */
+
+.btn-primary {
+  background: linear-gradient(
+    135deg,
+    #18d2e0 0%,
+    #0aa6b5 50%,
+    #ff7a2f 100%
+  );
+
+  background-size: 200% 200%;
+  transition: all .35s ease;
+}
+
+.btn-primary:hover {
+  background-position: 100% 50%;
+  transform: translateY(-2px);
+
+  box-shadow:
+    0 8px 32px rgba(24,210,224,0.35),
+    0 4px 16px rgba(255,122,47,0.2);
+}
