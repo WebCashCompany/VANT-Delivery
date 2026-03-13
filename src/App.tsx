@@ -1,5 +1,5 @@
 import { useState, useEffect, memo } from 'react';
-import { Send, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Send, CheckCircle2, ArrowRight, AlertCircle } from 'lucide-react';
 import { pedidosService } from './lib/pedidos.service';
 import logo from './assets/logo.png';
 import bgVideo from './assets/background.mp4';
@@ -30,10 +30,7 @@ const styles = `
   * { scrollbar-width: thin; scrollbar-color: var(--cyan) var(--bg); }
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  html, body {
-    height: 100%;
-    overflow: hidden;
-  }
+  html, body { height: 100%; overflow: hidden; }
 
   body {
     background: var(--bg);
@@ -41,9 +38,7 @@ const styles = `
     color: var(--white);
   }
 
-  #root {
-    height: 100%;
-  }
+  #root { height: 100%; }
 
   /* ── Vídeo de fundo ── */
   .video-bg {
@@ -81,7 +76,7 @@ const styles = `
     z-index: 1;
   }
 
-  /* ── Wrapper geral — ocupa 100vh sem scroll ── */
+  /* ── Wrapper geral ── */
   .page {
     height: 100vh;
     display: flex;
@@ -240,8 +235,50 @@ const styles = `
     box-shadow: 0 0 0 3px rgba(0,188,212,0.08), 0 0 16px rgba(0,188,212,0.06);
   }
 
+  /* ── Campo com erro ── */
+  .field input.input-error, .field textarea.input-error {
+    border-color: rgba(255,107,26,0.5) !important;
+    background: rgba(255,107,26,0.04) !important;
+    box-shadow: 0 0 0 3px rgba(255,107,26,0.08) !important;
+  }
+
+  /* ── Campo válido ── */
+  .field input.input-ok, .field textarea.input-ok {
+    border-color: rgba(0,188,212,0.4);
+    background: rgba(0,188,212,0.05);
+  }
+
   .field input:disabled, .field textarea:disabled { opacity: 0.4; cursor: not-allowed; }
   .field textarea { resize: none; line-height: 1.55; }
+
+  /* ── Hint abaixo do campo ── */
+  .field-hint {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.7rem;
+    font-weight: 400;
+    color: rgba(255,107,26,0.85);
+    min-height: 1rem;
+    animation: fadeHint 0.2s ease both;
+  }
+
+  @keyframes fadeHint {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .field-hint svg { flex-shrink: 0; }
+
+  /* ── Contador de caracteres ── */
+  .char-counter {
+    text-align: right;
+    font-size: 0.65rem;
+    color: rgba(122,136,153,0.45);
+    margin-top: -0.2rem;
+  }
+
+  .char-counter.warn { color: rgba(255,107,26,0.7); }
 
   /* ── Divisor ── */
   .divider {
@@ -249,7 +286,7 @@ const styles = `
     background: linear-gradient(90deg, transparent, rgba(0,188,212,0.15), rgba(255,107,26,0.15), transparent);
   }
 
-  /* ── Erro ── */
+  /* ── Erro global ── */
   .error-box {
     background: rgba(255,107,26,0.07);
     border: 1px solid rgba(255,107,26,0.2);
@@ -257,6 +294,9 @@ const styles = `
     padding: 0.6rem 1rem;
     font-size: 0.78rem;
     color: #ffb085;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
   }
 
   /* ── Botão ── */
@@ -393,18 +433,199 @@ const styles = `
   }
 `;
 
-// Fora do App + memo → nunca remontado em re-renders nem em troca de estado
+// ─────────────────────────────────────────────────────────────────────────────
+// REGRAS DE VALIDAÇÃO
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * NOME
+ * - Mínimo 3 chars, máximo 80
+ * - Apenas letras (incluindo acentuadas), espaços e hífen
+ * - Deve conter pelo menos 2 "palavras" (nome + sobrenome obrigatório)
+ * - Sem sequências de caracteres repetidos (aaaa, 1111, etc.)
+ * - Sem números ou símbolos
+ */
+function validateNome(value: string): string {
+  const v = value.trim();
+
+  if (!v) return 'Por favor, preencha seu nome completo.';
+  if (v.length < 3) return 'Nome muito curto — mínimo 3 caracteres.';
+  if (v.length > 80) return 'Nome muito longo — máximo 80 caracteres.';
+
+  // Apenas letras com acentos, espaços e hífens
+  if (!/^[A-Za-zÀ-ÖØ-öø-ÿ\s'-]+$/.test(v)) {
+    return 'O nome não pode conter números ou símbolos.';
+  }
+
+  // Pelo menos duas palavras com 2+ letras cada (nome e sobrenome)
+  const words = v.split(/\s+/).filter(w => w.length >= 2);
+  if (words.length < 2) return 'Por favor, informe nome e sobrenome.';
+
+  // Bloqueio de sequências repetitivas (ex: "aaaa", "abababab")
+  if (/(.)\1{3,}/.test(v.replace(/\s/g, ''))) {
+    return 'Nome inválido — caracteres repetitivos detectados.';
+  }
+
+  return '';
+}
+
+/**
+ * TELEFONE
+ * - Formato (XX) XXXXX-XXXX ou (XX) XXXX-XXXX
+ * - DDD válido (11–99, excluindo inexistentes)
+ * - Número não pode ser sequência (11111111111, 12345678901)
+ * - Não pode ser número de teste conhecido
+ */
+const INVALID_PHONES = new Set([
+  '11999999999','11111111111','22222222222','33333333333','44444444444',
+  '55555555555','66666666666','77777777777','88888888888','99999999999',
+  '00000000000','12345678901','10987654321',
+]);
+
+// DDDs brasileiros válidos
+const VALID_DDDS = new Set([
+  11,12,13,14,15,16,17,18,19,
+  21,22,24,27,28,
+  31,32,33,34,35,37,38,
+  41,42,43,44,45,46,47,48,49,
+  51,53,54,55,
+  61,62,63,64,65,66,67,68,69,
+  71,73,74,75,77,79,
+  81,82,83,84,85,86,87,88,89,
+  91,92,93,94,95,96,97,98,99,
+]);
+
+function validateTelefone(value: string): string {
+  const digits = value.replace(/\D/g, '');
+
+  if (!digits) return 'Por favor, informe seu WhatsApp.';
+  if (digits.length < 10) return 'Número incompleto — verifique o DDD e o número.';
+  if (digits.length > 11) return 'Número inválido — dígitos em excesso.';
+
+  const ddd = parseInt(digits.slice(0, 2), 10);
+  if (!VALID_DDDS.has(ddd)) return `DDD (${ddd}) inválido — verifique o código de área.`;
+
+  // Celular deve começar com 9 (11 dígitos) ou fixo (10 dígitos)
+  if (digits.length === 11 && digits[2] !== '9') {
+    return 'Número de celular deve iniciar com 9 após o DDD.';
+  }
+
+  // Sequência inválida (todos iguais ou sequência simples)
+  const numPart = digits.slice(2);
+  const uniqueChars = new Set(numPart.split('')).size;
+  if (uniqueChars <= 2) return 'Número inválido — sequência não reconhecida.';
+
+  if (INVALID_PHONES.has(digits)) return 'Número inválido — use seu WhatsApp real.';
+
+  return '';
+}
+
+/**
+ * PEDIDO
+ * - Mínimo 10 chars, máximo 300
+ * - Deve conter ao menos 2 palavras reais (não apenas símbolos ou números)
+ * - Sem sequências de caracteres aleatórias (detecta spam por entropia)
+ * - Sem excesso de caracteres especiais
+ * - Deve ter pelo menos 1 letra (não pode ser só números/símbolos)
+ */
+function isLowEntropy(text: string): boolean {
+  // Detecta sequências randômicas sem sentido:
+  // alto ratio de consoantes consecutivas sem vogais
+  const noSpaces = text.toLowerCase().replace(/\s/g, '');
+  const consonantStreak = noSpaces.match(/[^aeiouàáâãäéêëíîïóôõöúûüy\d\s]{5,}/g);
+  if (consonantStreak && consonantStreak.length > 0) return true;
+
+  // Detecta sequências de caracteres totalmente aleatórias
+  // via baixa diversidade de bigrams
+  if (noSpaces.length >= 8) {
+    const bigrams = new Set<string>();
+    for (let i = 0; i < noSpaces.length - 1; i++) {
+      bigrams.add(noSpaces[i] + noSpaces[i + 1]);
+    }
+    const diversity = bigrams.size / (noSpaces.length - 1);
+    // Texto real geralmente tem diversidade > 0.5
+    if (diversity < 0.3 && noSpaces.length > 10) return true;
+  }
+
+  return false;
+}
+
+function validatePedido(value: string): string {
+  const v = value.trim();
+
+  if (!v) return 'Por favor, descreva o que você está procurando.';
+  if (v.length < 10) return `Descrição muito curta — mínimo 10 caracteres (${v.length}/10).`;
+  if (v.length > 300) return 'Descrição muito longa — máximo 300 caracteres.';
+
+  // Deve conter ao menos uma letra
+  if (!/[a-zA-ZÀ-ÿ]/.test(v)) {
+    return 'A descrição deve conter palavras, não apenas números ou símbolos.';
+  }
+
+  // Mínimo 2 palavras com 2+ letras
+  const words = v.match(/[a-zA-ZÀ-ÿ]{2,}/g) ?? [];
+  if (words.length < 2) {
+    return 'Descreva melhor o produto — use pelo menos 2 palavras.';
+  }
+
+  // Excesso de caracteres especiais/símbolos (> 30% do texto)
+  const specialCount = (v.match(/[^a-zA-ZÀ-ÿ0-9\s]/g) ?? []).length;
+  if (specialCount / v.length > 0.3) {
+    return 'A descrição contém caracteres inválidos em excesso.';
+  }
+
+  // Detecta texto sem sentido (spam / mash de teclado)
+  if (isLowEntropy(v)) {
+    return 'Por favor, descreva o produto de forma clara (ex: "Tênis Nike tamanho 42").';
+  }
+
+  return '';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SANITIZAÇÃO — remove caracteres potencialmente perigosos antes de salvar
+// ─────────────────────────────────────────────────────────────────────────────
+
+function sanitize(value: string): string {
+  return value
+    .replace(/[<>{}[\]\\]/g, '')   // Remove HTML/JSON injection chars
+    .replace(/\s{3,}/g, '  ')      // Colapsa múltiplos espaços
+    .trim();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPONENTES
+// ─────────────────────────────────────────────────────────────────────────────
+
 const VideoBackground = memo(() => (
   <div className="video-bg">
     <video src={bgVideo} autoPlay loop muted playsInline />
   </div>
 ));
 
+interface FieldHintProps { message: string }
+function FieldHint({ message }: FieldHintProps) {
+  if (!message) return null;
+  return (
+    <span className="field-hint">
+      <AlertCircle size={11} />
+      {message}
+    </span>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// APP
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function App() {
   const [formData, setFormData] = useState({ nome: '', telefone: '', pedidos: '' });
-  const [loading, setLoading]   = useState(false);
-  const [success, setSuccess]   = useState(false);
-  const [error, setError]       = useState('');
+
+  // Erros por campo — só mostrados após o usuário interagir (blur) ou tentar submeter
+  const [touched,  setTouched]  = useState({ nome: false, telefone: false, pedidos: false });
+  const [loading,  setLoading]  = useState(false);
+  const [success,  setSuccess]  = useState(false);
+  const [apiError, setApiError] = useState('');
 
   useEffect(() => {
     const tag = document.createElement('style');
@@ -413,50 +634,89 @@ export default function App() {
     return () => { document.head.removeChild(tag); };
   }, []);
 
+  // ── Erros calculados em tempo real ──────────────────────────────────────────
+  const errors = {
+    nome:     validateNome(formData.nome),
+    telefone: validateTelefone(formData.telefone),
+    pedidos:  validatePedido(formData.pedidos),
+  };
+
+  const isFormValid = !errors.nome && !errors.telefone && !errors.pedidos;
+
+  // ── Formatação do telefone ───────────────────────────────────────────────────
   const formatPhone = (v: string) => {
-    const n = v.replace(/\D/g, '');
-    if (n.length <= 2) return n;
-    if (n.length <= 7) return `(${n.slice(0, 2)}) ${n.slice(2)}`;
+    const n = v.replace(/\D/g, '').slice(0, 11);
+    if (n.length <= 2)  return n;
+    if (n.length <= 7)  return `(${n.slice(0, 2)}) ${n.slice(2)}`;
+    if (n.length <= 10) return `(${n.slice(0, 2)}) ${n.slice(2, 6)}-${n.slice(6)}`;
     return `(${n.slice(0, 2)}) ${n.slice(2, 7)}-${n.slice(7, 11)}`;
   };
 
-  const validate = () => {
-    if (!formData.nome.trim())                                      { setError('Por favor, preencha seu nome'); return false; }
-    if (!formData.telefone.trim() || formData.telefone.length < 14) { setError('Telefone inválido — use (XX) XXXXX-XXXX'); return false; }
-    if (!formData.pedidos.trim())                                   { setError('Por favor, descreva seu pedido'); return false; }
-    return true;
+  // ── Handlers ────────────────────────────────────────────────────────────────
+  const handleBlur = (field: keyof typeof touched) => {
+    setTouched(prev => ({ ...prev, [field]: true }));
   };
 
+  const handleNomeChange = (v: string) => {
+    // Bloqueia números e símbolos em tempo real no campo nome
+    const clean = v.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ\s'-]/g, '');
+    setFormData(prev => ({ ...prev, nome: clean }));
+  };
+
+  const handleTelefoneChange = (v: string) => {
+    setFormData(prev => ({ ...prev, telefone: formatPhone(v) }));
+  };
+
+  const handlePedidoChange = (v: string) => {
+    // Limita a 300 chars e remove caracteres de injeção em tempo real
+    const clean = v.replace(/[<>{}[\]\\]/g, '').slice(0, 300);
+    setFormData(prev => ({ ...prev, pedidos: clean }));
+  };
+
+  // ── Submit ───────────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    if (!validate()) return;
+    setApiError('');
+
+    // Marca todos os campos como tocados para exibir todos os erros
+    setTouched({ nome: true, telefone: true, pedidos: true });
+
+    if (!isFormValid) return;
+
     setLoading(true);
     try {
       await pedidosService.insert({
-        nome:     formData.nome.trim(),
+        nome:     sanitize(formData.nome),
         telefone: formData.telefone,
-        pedidos:  formData.pedidos.trim(),
+        pedidos:  sanitize(formData.pedidos),
       });
       setSuccess(true);
       setFormData({ nome: '', telefone: '', pedidos: '' });
+      setTouched({ nome: false, telefone: false, pedidos: false });
     } catch (err: any) {
-      setError(err.message || 'Erro ao enviar pedido. Tente novamente.');
+      setApiError(err.message || 'Erro ao enviar pedido. Tente novamente.');
     } finally {
       setLoading(false);
     }
   };
 
+  // ── Classe CSS do campo ──────────────────────────────────────────────────────
+  const fieldClass = (field: keyof typeof errors, value: string) => {
+    if (!touched[field] || !value.trim()) return '';
+    return errors[field] ? 'input-error' : 'input-ok';
+  };
+
+  const pedidoLen = formData.pedidos.trim().length;
+
   return (
     <>
-      {/* Vídeo sempre montado — não desmonta ao trocar success */}
       <VideoBackground />
 
       <div className="page">
         <div className="card">
 
           {success ? (
-            // ── Tela de sucesso ──────────────────────────────────────────────
+            // ── Tela de sucesso ────────────────────────────────────────────
             <div className="success-card" style={{ margin: '0 auto' }}>
               <div className="success-icon">
                 <CheckCircle2 size={30} color="#00bcd4" strokeWidth={1.5} />
@@ -466,16 +726,16 @@ export default function App() {
                 Seu pedido foi registrado com sucesso.<br />
                 Em breve entraremos em contato pelo WhatsApp.
               </p>
-              <button className="btn-new" onClick={() => { setSuccess(false); setError(''); }}>
+              <button className="btn-new" onClick={() => { setSuccess(false); setApiError(''); }}>
                 Novo pedido <ArrowRight size={13} />
               </button>
             </div>
 
           ) : (
-            // ── Formulário ───────────────────────────────────────────────────
+            // ── Formulário ────────────────────────────────────────────────
             <>
               <div className="logo-wrap">
-                <img src={logo} alt="VANT" />
+                <img src={logo} alt="Promoforia" />
               </div>
 
               <div className="header">
@@ -484,55 +744,94 @@ export default function App() {
                 <p>Descreva o produto e encontraremos<br />as melhores opções para você.</p>
               </div>
 
-              <form className="form" onSubmit={handleSubmit}>
+              <form className="form" onSubmit={handleSubmit} noValidate>
+
+                {/* ── Nome ─────────────────────────────────────────────── */}
                 <div className="field">
                   <label htmlFor="nome">Nome completo</label>
                   <input
-                    id="nome" type="text"
-                    placeholder="Como devemos te chamar?"
+                    id="nome"
+                    type="text"
+                    placeholder="Nome e Sobrenome"
                     value={formData.nome}
-                    onChange={e => setFormData({ ...formData, nome: e.target.value })}
+                    className={fieldClass('nome', formData.nome)}
+                    onChange={e => handleNomeChange(e.target.value)}
+                    onBlur={() => handleBlur('nome')}
                     disabled={loading}
+                    autoComplete="name"
+                    maxLength={80}
                   />
+                  {touched.nome && errors.nome && (
+                    <FieldHint message={errors.nome} />
+                  )}
                 </div>
 
+                {/* ── Telefone ─────────────────────────────────────────── */}
                 <div className="field">
                   <label htmlFor="telefone">WhatsApp</label>
                   <input
-                    id="telefone" type="tel"
+                    id="telefone"
+                    type="tel"
                     placeholder="(XX) XXXXX-XXXX"
                     value={formData.telefone}
-                    onChange={e => setFormData({ ...formData, telefone: formatPhone(e.target.value) })}
+                    className={fieldClass('telefone', formData.telefone)}
+                    onChange={e => handleTelefoneChange(e.target.value)}
+                    onBlur={() => handleBlur('telefone')}
                     disabled={loading}
+                    autoComplete="tel"
                     maxLength={15}
+                    inputMode="numeric"
                   />
+                  {touched.telefone && errors.telefone && (
+                    <FieldHint message={errors.telefone} />
+                  )}
                 </div>
 
                 <div className="divider" />
 
+                {/* ── Pedido ───────────────────────────────────────────── */}
                 <div className="field">
                   <label htmlFor="pedidos">Descreva seu pedido</label>
                   <textarea
                     id="pedidos"
-                    placeholder="Ex: Tênis Nike Air Max tamanho 42 até R$400"
+                    placeholder='Ex: Tênis Nike Air Max tamanho 42 até R$ 400'
                     value={formData.pedidos}
-                    onChange={e => setFormData({ ...formData, pedidos: e.target.value })}
+                    className={fieldClass('pedidos', formData.pedidos)}
+                    onChange={e => handlePedidoChange(e.target.value)}
+                    onBlur={() => handleBlur('pedidos')}
                     disabled={loading}
                     rows={3}
                   />
+                  {/* Contador de caracteres */}
+                  <span className={`char-counter${pedidoLen > 260 ? ' warn' : ''}`}>
+                    {pedidoLen}/300
+                  </span>
+                  {touched.pedidos && errors.pedidos && (
+                    <FieldHint message={errors.pedidos} />
+                  )}
                 </div>
 
-                {error && <div className="error-box">{error}</div>}
+                {/* ── Erro global da API ───────────────────────────────── */}
+                {apiError && (
+                  <div className="error-box">
+                    <AlertCircle size={14} color="#ffb085" />
+                    {apiError}
+                  </div>
+                )}
 
-                <button type="submit" className="btn-submit" disabled={loading}>
+                {/* ── Botão ─────────────────────────────────────────────── */}
+                <button
+                  type="submit"
+                  className="btn-submit"
+                  disabled={loading}
+                >
                   {loading
                     ? <><div className="spinner" /> Enviando...</>
-                    : <><Send size={14} /> Enviar Pedido</>
-                  }
+                    : <><Send size={14} /> Enviar Pedido</>}
                 </button>
               </form>
 
-              <p className="footer-note">Seus dados são tratados com total segurança e confidencialidade.</p>
+              <p className="footer-note">Seus dados são tratados com total segurança.</p>
             </>
           )}
 
