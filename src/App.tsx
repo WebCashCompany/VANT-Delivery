@@ -554,7 +554,7 @@ function validatePedido(value: string): string {
   const v = value.trim();
 
   if (!v) return 'Por favor, descreva o que você está procurando.';
-  if (v.length < 10) return `Descrição muito curta — mínimo 10 caracteres (${v.length}/10).`;
+  if (v.length < 5) return `Descrição muito curta — mínimo 5 caracteres (${v.length}/5).`;
   if (v.length > 300) return 'Descrição muito longa — máximo 300 caracteres.';
 
   // Deve conter ao menos uma letra
@@ -564,8 +564,8 @@ function validatePedido(value: string): string {
 
   // Mínimo 2 palavras com 2+ letras
   const words = v.match(/[a-zA-ZÀ-ÿ]{2,}/g) ?? [];
-  if (words.length < 2) {
-    return 'Descreva melhor o produto — use pelo menos 2 palavras.';
+  if (words.length < 1) {
+    return 'Descreva melhor o produto — use pelo menos 1 palavra.';
   }
 
   // Excesso de caracteres especiais/símbolos (> 30% do texto)
