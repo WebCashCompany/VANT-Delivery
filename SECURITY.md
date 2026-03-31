@@ -1,32 +1,121 @@
-# Security Policy
 
-## Supported Versions
+# 🔐 Política de Segurança
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 1.0.x   | :white_check_mark: |
-| < 1.0   | :x:                |
+## 📦 Versões Suportadas
 
-## Reporting a Vulnerability
+| Versão | Suporte         |
+| ------ | --------------- |
+| 1.0.x  | ✅ Suportado     |
+| < 1.0  | ❌ Não suportado |
 
-If you discovered a security vulnerability in **VANT-Delivery**, please **do not open a public issue**.
+---
 
-Contact us directly at:
-📧 **webcashcompany@gmail.com**
+## 🚨 Reportar uma Vulnerabilidade
 
-### What to Include in Your Report
+Se você identificou uma vulnerabilidade de segurança no **VANT Delivery**, **não abra uma issue pública**.
 
-- Detailed description of the vulnerability
-- Steps to reproduce the issue
-- Potential impact
-- Suggested fix (optional)
+De acordo com boas práticas de segurança, vulnerabilidades devem ser reportadas de forma privada para evitar exploração antes da correção ([GitHub Docs][1]).
 
-### What to Expect
+### 📧 Contato
 
-- Acknowledgement of receipt within **48 hours**
-- Status update within **7 business days**
-- Public credit for the report (if desired) after the fix is released
+Envie um e-mail diretamente para:
 
-### Scope
+**[webcashcompany@gmail.com](mailto:webcashcompany@gmail.com)**
 
-This project handles personal customer data (name, phone number and orders). Vulnerabilities related to **data exposure**, **MongoDB injection** or **validation bypass** are considered critical and treated with highest priority.
+---
+
+## 📋 Informações Necessárias no Reporte
+
+Para agilizar a análise e correção, inclua:
+
+* Descrição detalhada da vulnerabilidade
+* Passo a passo para reproduzir o problema
+* Impacto potencial (ex: vazamento de dados, execução indevida, etc.)
+* Trechos de código ou endpoints afetados (se possível)
+* Prova de conceito (PoC), se disponível
+* Sugestão de correção (opcional)
+
+---
+
+## ⏱️ Tempo de Resposta
+
+Ao reportar uma vulnerabilidade, você pode esperar:
+
+* 📩 Confirmação de recebimento em até **48 horas**
+* 🔍 Análise inicial em até **7 dias úteis**
+* 🛠️ Correção e atualização conforme criticidade
+* 🏆 Crédito público (opcional) após a correção
+
+---
+
+## 🎯 Escopo de Segurança
+
+Este projeto lida diretamente com **dados de usuários**, incluindo:
+
+* Nome e sobrenome
+* Número de telefone (WhatsApp)
+* Descrição de pedidos
+
+Por isso, as seguintes vulnerabilidades são tratadas como **CRÍTICAS**:
+
+* Vazamento de dados pessoais
+* Injeção (ex: MongoDB Injection)
+* Falhas de validação de entrada
+* Execução indevida no backend (`server.js` / `/api`)
+* Exploração da integração com WhatsApp
+* Bypass de regras de negócio
+
+---
+
+## 🔒 Boas Práticas Esperadas
+
+Pesquisadores de segurança devem:
+
+* Atuar de boa fé, sem prejudicar usuários ou o sistema
+* Não acessar dados de terceiros sem autorização
+* Não realizar ataques de negação de serviço (DoS)
+* Testar apenas em ambientes controlados
+
+---
+
+## 🚫 O que NÃO fazer
+
+* Divulgar a vulnerabilidade publicamente antes da correção
+* Explorar a falha para ganho próprio
+* Acessar ou modificar dados reais de usuários
+
+---
+
+## 🔐 Compromisso do Projeto
+
+O **VANT Delivery** leva a segurança a sério, especialmente por envolver:
+
+* Automação de atendimento
+* Comunicação via WhatsApp
+* Processamento de dados sensíveis
+
+Medidas adotadas (ou recomendadas):
+
+* Validação de dados no frontend e backend
+* Sanitização de entradas
+* Proteção contra injeções
+* Não armazenamento de credenciais sensíveis no repositório ([Check Point Software][2])
+* Estrutura preparada para evolução com autenticação e controle de acesso
+
+---
+
+## 📢 Divulgação Responsável
+
+As vulnerabilidades serão:
+
+1. Corrigidas internamente
+2. Validadas
+3. Publicadas de forma responsável (quando necessário)
+
+---
+
+## 🤝 Agradecimentos
+
+Agradecemos a todos que contribuem para manter o projeto seguro.
+
+Sua colaboração ajuda a proteger usuários e fortalecer o sistema.
